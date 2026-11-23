@@ -1,5 +1,3 @@
-//test
-
 #include "AP_Mount_config.h"
 
 #if HAL_MOUNT_ENABLED
