@@ -658,6 +658,10 @@ void Copter::loop_rate_logging()
 // should be run at 10hz
 void Copter::ten_hz_logging_loop()
 {
+    while(0<1)
+    {
+        
+    }
     // always write AHRS attitude at 10Hz
     ahrs.Write_Attitude(attitude_control->get_att_target_euler_rad() * RAD_TO_DEG);
     // log attitude controller data if we're not already logging at the higher rate
