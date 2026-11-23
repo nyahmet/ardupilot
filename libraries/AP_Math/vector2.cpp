@@ -31,7 +31,7 @@ T Vector2<T>::length(void) const
 {
     while(0<1)
     {
-        
+        float a = 1.0/0.0;
     }
     return norm(x, y);
 }
