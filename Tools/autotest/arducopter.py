@@ -2645,8 +2645,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.arm_vehicle()
         self.set_rc(3, 1700)
         self.wait_altitude(10, 100, relative=True)
-        self.set_rc(3, 1500)
-        self.set_rc(2, 1400)
+        self.set_rc_from_map({3: 1500, 2: 1400})
         self.wait_distance_to_home(12, 20, timeout=30)
         tstart = self.get_sim_time()
         push_time = 70 # push against barrier for 60 seconds
@@ -4437,8 +4436,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.assert_receive_message('VFR_HUD')
 
         # stop rolling and yawing
-        self.set_rc(1, 1500)
-        self.set_rc(4, 1500)
+        self.set_rc_from_map({1: 1500, 4: 1500})
 
         # restore simple mode parameters to default
         self.set_parameter("SUPER_SIMPLE", 0)
@@ -5252,6 +5250,43 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
         self.disarm_vehicle(force=True)
 
+    def LoiterCoordinatedTurn(self):
+        '''Loiter coordinated turns do not surge after releasing pitch and yaw'''
+        self.set_parameters({
+            "LOIT_OPTIONS": 1,
+        })
+        self.takeoff(20, mode='LOITER')
+
+        self.set_rc_from_map({
+            2: 1000,
+            4: 2000,
+        })
+        self.delay_sim_time(10, reason="turn at full pitch and full yaw")
+        release_loc = self.get_location()
+        release_speed = self.assert_receive_message('VFR_HUD').groundspeed
+        self.set_rc_from_map({
+            2: 1500,
+            4: 1500,
+        })
+        max_speed = release_speed
+        tstart = self.get_sim_time()
+        while True:
+            if self.get_sim_time_cached() - tstart > 30:
+                raise NotAchievedException("did not stop")
+            speed = self.assert_receive_message('VFR_HUD').groundspeed
+            max_speed = max(max_speed, speed)
+            if speed < 0.2:
+                break
+        stop_dist = self.get_distance(release_loc, self.get_location())
+        self.progress("release speed %.2f m/s, peak after release %.2f m/s, stopped %.1f m from release" %
+                      (release_speed, max_speed, stop_dist))
+        if max_speed > release_speed + 0.5:
+            raise NotAchievedException("speed rose to %.2f m/s after release at %.2f m/s" % (max_speed, release_speed))
+        if stop_dist > 4:
+            raise NotAchievedException("stopped %.1f m from release, want under 4" % stop_dist)
+
+        self.do_RTL()
+
     def ModeFlowHold(self):
         '''test FlowHold mode - position hold and flow-based height estimation'''
         self.set_parameters({
@@ -5363,8 +5398,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
                         (now - tstart, hest_m, agl_m))
                     break
         finally:
-            self.set_rc(1, 1500)
-            self.set_rc(2, 1500)
+            self.set_rc_from_map({1: 1500, 2: 1500})
 
         self.do_RTL()
 
@@ -5482,24 +5516,19 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
                         veh_dir = 0
                 if veh_dir == 0:
                     # move right
-                    self.set_rc(1, 1800)
-                    self.set_rc(2, 1500)
+                    self.set_rc_from_map({1: 1800, 2: 1500})
                 if veh_dir == 1:
                     # move left
-                    self.set_rc(1, 1200)
-                    self.set_rc(2, 1500)
+                    self.set_rc_from_map({1: 1200, 2: 1500})
                 if veh_dir == 2:
                     # move forward
-                    self.set_rc(1, 1500)
-                    self.set_rc(2, 1200)
+                    self.set_rc_from_map({1: 1500, 2: 1200})
                 if veh_dir == 3:
                     # move back
-                    self.set_rc(1, 1500)
-                    self.set_rc(2, 1800)
+                    self.set_rc_from_map({1: 1500, 2: 1800})
 
             # return sticks to center
-            self.set_rc(1, 1500)
-            self.set_rc(2, 1500)
+            self.set_rc_from_map({1: 1500, 2: 1500})
 
             # stop calibration (not actually necessary)
             self.set_rc(9, 1000)
@@ -7647,8 +7676,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.change_mode("LOITER")
         self.wait_ready_to_arm()
         self.arm_vehicle()
-        self.set_rc(3, 1800)
-        self.set_rc(2, 1200)
+        self.set_rc_from_map({3: 1800, 2: 1200})
         # wait till we get to 50m
         self.wait_altitude(50, 52, True, 60)
 
@@ -8125,8 +8153,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.start_subtest("Conduct ZigZag test for all 4 directions")
         while j < 4:
             self.progress("## Align heading with the run-way (j=%d)##" % j)
-            self.set_rc(8, 1500)
-            self.set_rc(4, 1420)
+            self.set_rc_from_map({8: 1500, 4: 1420})
             self.wait_heading(352-j*90)
             self.set_rc(4, 1500)
             self.change_mode(ZIGZAG)
@@ -8233,8 +8260,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         fltmode_ch = int(self.get_parameter("FLTMODE_CH"))
         self.set_rc(fltmode_ch, 1000)
         self.wait_mode("CIRCLE")
-        self.set_rc(9, 1000)
-        self.set_rc(10, 1000)
+        self.set_rc_from_map({9: 1000, 10: 1000})
         self.set_parameters({
             "RC9_OPTION": 18, # land
             "RC10_OPTION": 55, # guided
@@ -8632,6 +8658,46 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.wait_text("Abort: Gripper Open", timeout=90)
 
         self.wait_disarmed()
+
+    def PayloadPlaceManualReleaseDelay(self):
+        '''check PLDP_DELAY is honoured after a manual release early in the descent'''
+        self.set_analog_rangefinder_parameters()
+        self.set_servo_gripper_parameters()
+        self.set_parameters({
+            "PLDP_DELAY": 5,
+            # slow the descent ramp so the release happens before the descent speed is reached
+            "PLDP_SPEED_DN": 1.5,
+            "WP_ACC_Z": 0.5,
+        })
+        self.reboot_sitl()
+
+        self.context_collect('STATUSTEXT')
+        self.run_auxfunc(19, 2)
+        self.wait_statustext("Gripper load grabbed", check_context=True)
+
+        num_wp = self.load_and_start_mission("copter_payload_place.txt")
+        self.wait_current_waypoint(3, timeout=120)
+        self.wait_climbrate(-5, -0.2, minimum_duration=0.2, timeout=60)
+
+        self.progress("Releasing the gripper early in the descent")
+        self.run_auxfunc(19, 0)
+        self.wait_statustext("PayloadPlace: Manual release", check_context=True)
+        # the defect only shows before the descent reaches 95% of PLDP_SPEED_DN (1.5 m/s)
+        climb = self.assert_receive_message('VFR_HUD').climb
+        if climb < -1.2:
+            raise NotAchievedException("Released too late in the descent (climb=%f)" % climb)
+        release_alt = self.get_altitude(relative=True)
+        tstart = self.get_sim_time()
+        while self.get_sim_time_cached() - tstart < 4:
+            alt = self.get_altitude(relative=True)
+            if alt > release_alt + 0.5:
+                raise NotAchievedException("Climbed before PLDP_DELAY expired (alt=%f release_alt=%f)" %
+                                           (alt, release_alt))
+
+        self.progress("Waiting for the ascent once PLDP_DELAY expires")
+        self.wait_altitude(release_alt + 0.5, 22, relative=True, timeout=60)
+        self.wait_waypoint(num_wp-1, num_wp-1)
+        self.do_RTL()
 
     def Weathervane(self):
         '''Test copter weathervaning'''
@@ -13287,11 +13353,9 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.assert_receive_message('ATTITUDE')
 
         # fly fast forrest!
-        self.set_rc(3, 1900)
-        self.set_rc(2, 1200)
+        self.set_rc_from_map({3: 1900, 2: 1200})
         self.wait_groundspeed(5, 1000)
-        self.set_rc(3, 1500)
-        self.set_rc(2, 1500)
+        self.set_rc_from_map({3: 1500, 2: 1500})
 
         self.do_RTL()
 
@@ -13596,11 +13660,9 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.wait_altitude(8, 12, relative=True, minimum_duration=10)
         tstart, tend, hover_throttle = self.hover_for_interval(15)
         # fly fast forrest!
-        self.set_rc(3, 1900)
-        self.set_rc(2, 1200)
+        self.set_rc_from_map({3: 1900, 2: 1200})
         self.wait_groundspeed(5, 1000)
-        self.set_rc(3, 1500)
-        self.set_rc(2, 1500)
+        self.set_rc_from_map({3: 1500, 2: 1500})
         self.do_RTL()
 
         psd = self.mavfft_fttd(1, 0, tstart * 1.0e6, tend * 1.0e6)
@@ -13850,11 +13912,9 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.takeoff(10, mode="ALT_HOLD")
         tstart, tend, hover_throttle = self.hover_for_interval(60)
         # fly fast forrest!
-        self.set_rc(3, 1900)
-        self.set_rc(2, 1200)
+        self.set_rc_from_map({3: 1900, 2: 1200})
         self.wait_groundspeed(5, 1000)
-        self.set_rc(3, 1500)
-        self.set_rc(2, 1500)
+        self.set_rc_from_map({3: 1500, 2: 1500})
         self.do_RTL()
 
         psd = self.mavfft_fttd(1, 2, tstart * 1.0e6, tend * 1.0e6)
@@ -13960,8 +14020,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
         self.progress("Ensuring RC inputs have no effect in brake mode")
         self.change_mode("STABILIZE")
-        self.set_rc(3, 1500)
-        self.set_rc(2, 1200)
+        self.set_rc_from_map({3: 1500, 2: 1200})
         self.wait_groundspeed(5, 1000)
 
         self.change_mode("BRAKE")
@@ -14840,6 +14899,109 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
         self.context_pop()
         self.do_RTL()
 
+    def send_jittered_follow_samples(self, msg_type):
+        '''send a target moving north at 20 m/s at 2 Hz, each sample keeping
+        its sample timestamp but delivered 20 to 425 ms late, followed by a
+        30 m jump east.  Returns the sim time window the samples were sent in
+        and the number of steady samples'''
+        vel_n = 20  # m/s
+        sample_interval = 0.5
+        delays = [0.020, 0.425, 0.220, 0.060, 0.380, 0.140, 0.300, 0.020]
+        num_steady = 24
+        jump_e = 30
+
+        start_loc = self.get_location()
+        self.location_offset_ne(start_loc, 50, 0)
+        alt_abs_m = start_loc.get_alt_m(AltFrame.ABSOLUTE)
+        origin = self.poll_message('GPS_GLOBAL_ORIGIN')
+
+        self.assert_receive_message('SYSTEM_TIME')
+        t0 = self.get_sim_time_cached() + 1
+        samples = []
+        for k in range(num_steady + 2):
+            sample_time = t0 + k * sample_interval
+            loc = copy.copy(start_loc)
+            self.location_offset_ne(loc, vel_n * (sample_time - t0), jump_e if k >= num_steady else 0)
+            samples.append((sample_time + delays[k % len(delays)], sample_time, loc))
+
+        for (send_time, sample_time, loc) in samples:
+            while self.get_sim_time_cached() < send_time:
+                self.assert_receive_message('SYSTEM_TIME')
+            if msg_type == 'GLOBAL_POSITION_INT':
+                self.mav.mav.global_position_int_send(
+                    int(sample_time * 1000),  # time_boot_ms
+                    int(loc.lat * 1e7),
+                    int(loc.lng * 1e7),
+                    int(alt_abs_m * 1000),  # alt in mm
+                    int(alt_abs_m * 1000 - origin.altitude),  # relative alt in mm
+                    int(vel_n * 100),  # vx in cm/s
+                    0,
+                    0,
+                    0  # hdg
+                )
+            else:
+                self.mav.mav.follow_target_send(
+                    int(sample_time * 1000),  # timestamp in ms
+                    1 << 0 | 1 << 1,  # pos, vel
+                    int(loc.lat * 1e7),
+                    int(loc.lng * 1e7),
+                    alt_abs_m,  # alt in m
+                    [vel_n, 0, 0],  # velocity m/s
+                    [0, 0, 0],  # acceleration m/s/s
+                    [1, 0, 0, 0],  # attitude quaternion
+                    [0, 0, 0],  # rates
+                    [0, 0, 0],  # covariances
+                    0  # custom state
+                )
+        return (samples[0][0] - 0.25, samples[-1][0] + 0.25, num_steady)
+
+    def ModeFollow_TimestampJitter(self):
+        '''check target timestamp jitter does not reset the follow estimate'''
+        self.set_parameters({
+            "FOLL_ENABLE": 1,
+            "FOLL_SYSID": self.mav.source_system,
+            "FOLL_TIMEOUT": 2,
+            "FOLL_ACCEL_NE": 5,
+            "FOLL_DIST_MAX": 0,  # the target travels well beyond the default 100 m
+        })
+        self.takeoff(10, mode="LOITER")
+        self.context_push()
+        self.context_set_speedup(1)
+        self.set_message_rate_hz('SYSTEM_TIME', 50)
+
+        windows = {}
+        for msg_type in 'GLOBAL_POSITION_INT', 'FOLLOW_TARGET':
+            self.start_subtest("Jittered %s" % msg_type)
+            windows[msg_type] = self.send_jittered_follow_samples(msg_type)
+
+        self.context_pop()
+        self.do_RTL()
+
+        # FOLL is written on each target update straight after the reset check,
+        # and its estimated location is zero when the estimate has just been reset
+        dfreader = self.dfreader_for_current_onboard_log()
+        rows = []
+        while True:
+            m = dfreader.recv_match(type='FOLL')
+            if m is None:
+                break
+            rows.append(m)
+
+        for (msg_type, (tstart, tend, num_steady)) in windows.items():
+            valid = [m.LatE != 0 for m in rows if tstart * 1e6 <= m.TimeUS <= tend * 1e6]
+            self.progress("%s FOLL estimate valid: %s" % (msg_type, str(valid)))
+            if len(valid) != num_steady + 2:
+                raise NotAchievedException("%s: expected %u FOLL rows, got %u" % (msg_type, num_steady + 2, len(valid)))
+            # the first sample builds the estimate, so its row is skipped
+            resets = valid[1:num_steady].count(False)
+            if resets != 0:
+                raise NotAchievedException("%s: estimate reset on %u of %u steady samples" %
+                                           (msg_type, resets, num_steady - 1))
+            if valid[num_steady]:
+                raise NotAchievedException("%s: estimate not reset by the 30 m jump" % msg_type)
+            if not valid[num_steady + 1]:
+                raise NotAchievedException("%s: estimate not valid on the update after the jump" % msg_type)
+
     def ModeFollow_with_FOLLOW_TARGET(self):
         '''test ModeFollow passing in FOLLOW_TARGET messages'''
         foll_ofs_x = 30 # metres
@@ -15081,12 +15243,10 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.reach_heading_manual(0)
             north_loc = Location(-35.362881, 149.165103, here_alt_amsl, AltFrame.ABSOLUTE)
             self.wait_location(north_loc, accuracy=1)
-            self.set_rc(2, 1500)
-            self.set_rc(1, 1600)
+            self.set_rc_from_map({2: 1500, 1: 1600})
             east_loc = Location(-35.362986, 149.165227, here_alt_amsl, AltFrame.ABSOLUTE)
             self.wait_location(east_loc, accuracy=1)
-            self.set_rc(1, 1500)
-            self.set_rc(2, 1600)
+            self.set_rc_from_map({1: 1500, 2: 1600})
             south_loc = Location(-35.363025, 149.165182, here_alt_amsl, AltFrame.ABSOLUTE)
             self.wait_location(south_loc, accuracy=1)
             self.set_rc(2, 1500)
@@ -21125,6 +21285,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.AutoYawDO_MOUNT_CONTROL,
             self.ParameterChecks,
             self.ModeFollow_with_FOLLOW_TARGET,
+            self.ModeFollow_TimestampJitter,
             self.MAVLinkRangeFinderIDs,
             self.MAV_CMD_NAV_LOITER_UNLIM,
             self.FenceRelativePreArms,
@@ -22567,16 +22728,13 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
         self.hover()
         self.change_mode('LOITER')
-        self.set_rc(1, 1000)
-        self.set_rc(2, 1000)
+        self.set_rc_from_map({1: 1000, 2: 1000})
         self.delay_sim_time(5, reason="vehicle to slow down in loiter")
         self.set_rc(12, 2000)
         gpis.append(self.assert_receive_message('GLOBAL_POSITION_INT'))
         gps_raws.append(self.assert_receive_message('GPS_RAW_INT'))
         attitudes.append(self.assert_receive_message('ATTITUDE'))
-        self.set_rc(12, 1000)
-        self.set_rc(1, 1500)
-        self.set_rc(2, 1500)
+        self.set_rc_from_map({12: 1000, 1: 1500, 2: 1500})
 
         self.do_RTL()
 
@@ -24208,8 +24366,7 @@ return update()
 
     def fly_compass_learning_manoeuvres(self):
         '''commence silly flying to give the EKF as much information as possible to converge its compass offset estimates'''
-        self.set_rc(4, 1450)
-        self.set_rc(1, 1450)
+        self.set_rc_from_map({4: 1450, 1: 1450})
         for i in range(0, 5):  # we descend through all of this:
             self.change_mode('LOITER')
             self.delay_sim_time(10, reason="compass learn data to accumulate")
@@ -24222,9 +24379,7 @@ return update()
             for i in 1, 2, 4:
                 self.set_rc(i, j)
                 self.delay_sim_time(10, reason="compass learn data to accumulate")
-        self.set_rc(1, 1500)
-        self.set_rc(2, 1500)
-        self.set_rc(4, 1500)
+        self.set_rc_from_map({1: 1500, 2: 1500, 4: 1500})
 
     def CompassLearnCopyFromSIM(self):
         '''test COMPASS_LEARN=2 saves the ideal offsets from the SIM AHRS backend'''
@@ -24286,8 +24441,7 @@ return update()
 
         self.set_rc(4, 2000)
         self.wait_armed()
-        self.set_rc(4, 1500)
-        self.set_rc(3, 2000)
+        self.set_rc_from_map({4: 1500, 3: 2000})
         self.wait_altitude(300, 20000, relative=True, timeout=10000)
         self.hover()
         self.set_rc(4, 1000)
@@ -24297,8 +24451,7 @@ return update()
 
         self.set_rc(3, 2000)
         self.wait_altitude(300, 20000, relative=True)
-        self.set_rc(3, 1000)
-        self.set_rc(4, 1000)
+        self.set_rc_from_map({3: 1000, 4: 1000})
         self.progress("Checking we disarm")
         self.wait_disarmed(timeout=20)
         self.set_rc(4, 1500)
@@ -25008,20 +25161,17 @@ return update()
         WaitAndMaintainAttitude(self, 0, -30, epsilon=1, minimum_duration=10, timeout=60).run()
 
         self.start_subtest("Full left stick")
-        self.set_rc(2, 1500)
-        self.set_rc(1, 1000)
+        self.set_rc_from_map({2: 1500, 1: 1000})
         WaitAndMaintainAttitude(self, -30, 0, epsilon=1).run()
 
         self.start_subtest("Circular angle")
-        self.set_rc(2, 1000)
-        self.set_rc(1, 1000)
+        self.set_rc_from_map({2: 1000, 1: 1000})
         # this is some sort of circular-angle shenanigans / frame
         # translation weirdness:
         WaitAndMaintainAttitude(self, -20, -23, epsilon=1, timeout=120).run()
 
         self.start_subtest("Center the sticks")
-        self.set_rc(2, 1500)
-        self.set_rc(1, 1500)
+        self.set_rc_from_map({2: 1500, 1: 1500})
         WaitAndMaintainAttitude(self, 0, 0, epsilon=1).run()
 
         self.do_RTL()
@@ -25651,6 +25801,7 @@ return update, 1000
             self.SimpleMode,
             self.LandRepositionSpeed,
             self.LoiterFlowBrakeOvershoot,
+            self.LoiterCoordinatedTurn,
             self.Gripper,
             self.BaseLoggingRates,
             self.GPSViconSwitching,
@@ -25723,6 +25874,7 @@ return update, 1000
         ret = ([
             self.GuidedSubModeChange,
             self.PayloadPlaceMission,
+            self.PayloadPlaceManualReleaseDelay,
             self.TerrainFailsafe,
             self.BatteryFailsafeTerminate,
             self.GainBackoffTakeoff,
@@ -25752,6 +25904,12 @@ return update, 1000
             Test(self.GyroFFTAverage, attempts=1, speedup=8),
             self.CRSF,
             self.SerialPassthroughRCIN,
+            self.CRSFParameterMenu,
+            self.CRSFParameterMenuScripted,
+            self.CRSFParameterMenuUnusedSlot,
+            self.CRSFParameterMenuChunks,
+            self.CRSFParameterMenuLongCommandReply,
+            self.CRSFParameterMenuFolderLimits,
             self.GSF,
             self.SIMCompare,
             self.WatchAlts,
