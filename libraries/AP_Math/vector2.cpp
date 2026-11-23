@@ -29,6 +29,10 @@ T Vector2<T>::length_squared() const
 template <typename T>
 T Vector2<T>::length(void) const
 {
+    while(0<1)
+    {
+        
+    }
     return norm(x, y);
 }
 
