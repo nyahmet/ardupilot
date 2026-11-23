@@ -74,7 +74,7 @@
  *
  */
  
-#include "Copter.h" //TEST
+#include "Copter.h" // TEST
 #include <AP_InertialSensor/AP_InertialSensor_rate_config.h>
 
 #define FORCE_VERSION_H_INCLUDE
