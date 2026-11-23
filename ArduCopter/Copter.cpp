@@ -73,8 +73,8 @@
  *  Wiki: https://copter.ardupilot.org/
  *
  */
-
-#include "Copter.h"
+ 
+#include "Copter.h" //TEST
 #include <AP_InertialSensor/AP_InertialSensor_rate_config.h>
 
 #define FORCE_VERSION_H_INCLUDE
