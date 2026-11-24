@@ -716,7 +716,9 @@ void Copter::ten_hz_logging_loop()
         camera_mount.write_log();
     }
 #endif
-float a = 1.0/0.0;
+volatile float sifir = 0.0f;
+volatile float a = 1.0f / sifir;
+(void)a;
 }
 
 // twentyfive_hz_logging - should be run at 25hz
