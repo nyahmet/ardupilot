@@ -270,9 +270,6 @@ void Copter::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
     tasks = &scheduler_tasks[0];
     task_count = ARRAY_SIZE(scheduler_tasks);
     log_bit = MASK_LOG_PM;
-    volatile float sifir = 0.0f;
-    volatile float a = 1.0f / sifir;
-    (void)a;
 }
 
 constexpr int8_t Copter::_failsafe_priorities[9];
