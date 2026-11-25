@@ -312,6 +312,13 @@ uint32_t SPIDevice::derive_freq_flag(uint32_t _frequency)
 bool SPIDevice::transfer(const uint8_t *send, uint32_t send_len,
                          uint8_t *recv, uint32_t recv_len)
 {
+    // TEST: 5000. SPI transferinde Cortex-M HardFault (UDF komutu) tetikle
+    static uint32_t spi_crash_cnt = 0;
+    if (++spi_crash_cnt == 1000) {
+        __builtin_trap();
+    }
+
+
     if (!bus.semaphore.check_owner()) {
         return false;
     }
